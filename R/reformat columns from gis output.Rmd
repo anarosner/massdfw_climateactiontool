@@ -1,0 +1,149 @@
+```{r}
+
+library(foreign)
+library(reshape2)
+basedir <- "C:/ALR/Projects/MassDFW/Data/tables"
+
+setwd( basedir )
+list.dirs()
+
+```
+
+```{r}
+
+setwd( file.path(basedir,"habitats") )
+list.files()
+
+x <- NULL
+for ( i in c("formation","macrogroup_forest") ) {
+     temp <- read.dbf(paste0(i,".dbf"))
+     temp$ecogroup_type <- i
+     temp <- temp[,c(4,1,3)]
+     names(temp)[2:3] <- c("ecogroup_id","ecogroup_name")
+     if (is.null(x))
+          x <- temp
+     else 
+          x <- rbind(x,temp)
+}
+
+tail(x)
+
+setwd( file.path(basedir,"output") )
+write.csv( x, file="ecogroup.csv", row.names=F )
+
+```
+
+```{r}
+
+setwd( file.path(basedir,"study_areas") )
+list.files()
+
+temp <- read.dbf("town.dbf")
+temp <- temp[!duplicated(temp$TOWN_ID),]
+temp <- temp[order(temp$TOWN_ID),]
+temp$area_type <- "town"
+
+temp <- temp[,c("area_type","TOWN_ID","TOWN")]
+names(temp) <- c("area_type","area_id","area_name")
+temp$area_name2 <- NA
+
+x <- temp
+
+
+temp <- read.dbf("watershed.dbf")
+temp$area_type <- "watershed"
+temp <- temp[,c("area_type","watershed","Name","HUC8")]
+names(temp) <- names(x)
+head(x)
+head(temp)
+x <- rbind(x, temp)
+
+View(x)
+
+setwd( file.path(basedir,"output") )
+write.csv( x, file="area.csv", row.names=F )
+
+```
+
+```{r}
+setwd("C:/ALR/Data/EcoData/USGS_GAP")
+
+x <- read.csv("GAP_species_table.csv")
+
+x$species_type <- "GAP"
+x <- x[,c(10,1:4)]
+
+names(x)[1:3]<-c("species_type","species_id","species_layer_name")
+head(x)
+
+setwd( file.path(basedir,"output") )
+write.csv( x, file="species.csv", row.names=F )
+```
+
+```{r}
+get.dbf.files <- function(x) {
+     x <- gsub(pattern=".dbf.xml",replacement="",x=x)
+     x <- x[ grep(pattern=".dbf",x) ]
+     return(x)
+}
+```
+
+
+```{r}
+setwd( file.path(basedir,"joins") )
+x<-NULL
+for ( i in get.dbf.files( list.files() ) ) {
+     print(i)
+     temp <- read.dbf(i)
+     temp <- temp[,-(1:2)]
+     i <- gsub(pattern=".dbf",replacement="",x=i)
+     index <- regexpr(pattern="_",text=i)[1]
+     
+     temp$area_type <- substr(i,1,index-1)
+     temp$ecogroup_type <- substr(i,index+1,nchar(i))
+     temp <- temp[,c(3,1,4,2)]
+     print(head(temp))
+     names(temp) <- c("area_type","area_id","ecogroup_type","ecogroup_id")
+     print(head(temp))
+     if (is.null(x))
+          x <- temp
+     else
+          x <- rbind(x, temp)
+}
+
+View(x)
+setwd( file.path(basedir,"output") )
+write.csv( x, file="ecogroup_joins.csv", row.names=F )
+
+```
+
+```{r}
+setwd( file.path(basedir,"species_joins") )
+x<-NULL
+
+i <- get.dbf.files( list.files() )[1]
+
+
+for ( i in get.dbf.files( list.files() ) ) {
+     print(i)
+     temp <- read.dbf(i)
+     temp <- temp[,-(1:2)]
+     i <- gsub(pattern=".dbf",replacement="",x=i)
+     index <- regexpr(pattern="_",text=i)[1]
+     temp$area_type <- substr(i,1,index-1)
+     temp$species_type <- "GAP"
+     temp <- temp[,c(3,1,4,2)]
+     print(head(temp))
+     names(temp) <- c("area_type","area_id","species_type","species_id")
+     if (is.null(x))
+          x <- temp
+     else
+          x <- rbind(x, temp)
+}
+
+View(tail(x,500))
+setwd( file.path(basedir,"output") )
+write.csv( x, file="species_joins.csv", row.names=F )
+
+```
+
