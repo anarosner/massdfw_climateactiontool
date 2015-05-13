@@ -1,4 +1,4 @@
-```{r}
+```{r load libraries}
 
 library(foreign)
 library(reshape2)
@@ -9,14 +9,27 @@ list.dirs()
 
 ```
 
-```{r}
+```{r function to get dbf files from directory}
+get.dbf.files <- function(x) {
+     i <- c(grep(pattern="xml",x),grep(pattern="lock",x))
+     if (length( i ) >0)
+          x <- x[ -i ]
+     x
+     x <- x[ grep(pattern=".dbf",x) ]
+     x
+     return(x)
+}
+```
+
+```{r prep tables for habitats}
 
 setwd( file.path(basedir,"habitats") )
 list.files()
+get.dbf.files(list.files())
 
 x <- NULL
-for ( i in c("formation","macrogroup_forest") ) {
-     temp <- read.dbf(paste0(i,".dbf"))
+for ( i in get.dbf.files(list.files()) ) {
+     temp <- read.dbf(i)
      temp$ecogroup_type <- i
      temp <- temp[,c(4,1,3)]
      names(temp)[2:3] <- c("ecogroup_id","ecogroup_name")
@@ -25,123 +38,148 @@ for ( i in c("formation","macrogroup_forest") ) {
      else 
           x <- rbind(x,temp)
 }
-
+head(x)
 tail(x)
 
+#save to csv
 setwd( file.path(basedir,"output") )
 write.csv( x, file="ecogroup.csv", row.names=F )
 
 ```
 
-```{r}
+```{r prep tables for town and watershed study areas}
 
 setwd( file.path(basedir,"study_areas") )
-list.files()
+# list.files()
+# get.dbf.files(list.files())
 
+#read town dbf and remove duplicates
 temp <- read.dbf("town.dbf")
 temp <- temp[!duplicated(temp$TOWN_ID),]
 temp <- temp[order(temp$TOWN_ID),]
-temp$area_type <- "town"
 
-temp <- temp[,c("area_type","TOWN_ID","TOWN")]
-names(temp) <- c("area_type","area_id","area_name")
+#select and rename town columns
+temp$area_type <- "town"
+temp <- temp[,c("area_type","TOWN_ID","TOWN")] #select columns
+names(temp) <- c("area_type","area_id","area_name") #rename columns
 temp$area_name2 <- NA
 
+#save towns to variable x
 x <- temp
 
-
+#read watershed dbf and remove duplicates
 temp <- read.dbf("watershed.dbf")
+
+#select and rename watershed columns
 temp$area_type <- "watershed"
 temp <- temp[,c("area_type","watershed","Name","HUC8")]
 names(temp) <- names(x)
-head(x)
-head(temp)
+
+#save watersheds to variable x
 x <- rbind(x, temp)
 
-View(x)
+head(x)
+tail(x)
 
+#save to csv
 setwd( file.path(basedir,"output") )
 write.csv( x, file="area.csv", row.names=F )
 
 ```
 
-```{r}
-setwd("C:/ALR/Data/EcoData/USGS_GAP")
+```{r prep tables for USGS GAP species}
 
+#read table
+setwd("C:/ALR/Data/EcoData/USGS_GAP")
 x <- read.csv("GAP_species_table.csv")
 
+#add species type column
+#select, reorder, and rename columns
 x$species_type <- "GAP"
+x <- x[,c("species_type", "GAP_id", "GAP_layer_name", "sci_name", "common_name")]
 x <- x[,c(10,1:4)]
+names(x)[2:3]<-c("species_id","species_layer_name")
 
-names(x)[1:3]<-c("species_type","species_id","species_layer_name")
 head(x)
 
+#save to csv
 setwd( file.path(basedir,"output") )
 write.csv( x, file="species.csv", row.names=F )
 ```
 
-```{r}
-get.dbf.files <- function(x) {
-     x <- gsub(pattern=".dbf.xml",replacement="",x=x)
-     x <- x[ grep(pattern=".dbf",x) ]
-     return(x)
-}
-```
+
+```{r prep tables for ecogroups joins}
 
 
-```{r}
 setwd( file.path(basedir,"joins") )
 x<-NULL
+
+#loop through tables
 for ( i in get.dbf.files( list.files() ) ) {
      print(i)
+     #read dbf
      temp <- read.dbf(i)
-     temp <- temp[,-(1:2)]
-     i <- gsub(pattern=".dbf",replacement="",x=i)
-     index <- regexpr(pattern="_",text=i)[1]
      
-     temp$area_type <- substr(i,1,index-1)
-     temp$ecogroup_type <- substr(i,index+1,nchar(i))
-     temp <- temp[,c(3,1,4,2)]
+     #find index to split study area from ecogroup type
+     title <- gsub(pattern=".dbf",replacement="",x=i)
+     index <- regexpr(pattern="_",text=title)[1]
+     
+     #extract area type and ecogroup type
+     temp$area_type <- substr(title,1,index-1)
+     temp$ecogroup_type <- substr(title,index+1,nchar(i))
+     
+     #select, reorder, and rename columns
+     temp <- temp[,c(5,3,6,4)] 
      print(head(temp))
      names(temp) <- c("area_type","area_id","ecogroup_type","ecogroup_id")
      print(head(temp))
+     
+     #save to variable x
      if (is.null(x))
           x <- temp
      else
           x <- rbind(x, temp)
 }
 
-View(x)
+# save to csv
 setwd( file.path(basedir,"output") )
 write.csv( x, file="ecogroup_joins.csv", row.names=F )
 
 ```
 
-```{r}
+```{r prep tables for species joins}
 setwd( file.path(basedir,"species_joins") )
 x<-NULL
-
-i <- get.dbf.files( list.files() )[1]
 
 
 for ( i in get.dbf.files( list.files() ) ) {
      print(i)
+
+     #read dbf
      temp <- read.dbf(i)
-     temp <- temp[,-(1:2)]
-     i <- gsub(pattern=".dbf",replacement="",x=i)
-     index <- regexpr(pattern="_",text=i)[1]
+
+     #find index to split study area from ecogroup type
+     title <- gsub(pattern=".dbf",replacement="",x=i)
+     index <- regexpr(pattern="_",text=title)[1]
+
+     #extract area type and ecogroup type
      temp$area_type <- substr(i,1,index-1)
      temp$species_type <- "GAP"
-     temp <- temp[,c(3,1,4,2)]
+
+     #select, reorder, and rename columns
+     temp <- temp[,c(5,3,6,4)]
      print(head(temp))
      names(temp) <- c("area_type","area_id","species_type","species_id")
+     print(head(temp))
+
+     #save to variable x
      if (is.null(x))
           x <- temp
      else
           x <- rbind(x, temp)
 }
 
-View(tail(x,500))
+# save to csv
 setwd( file.path(basedir,"output") )
 write.csv( x, file="species_joins.csv", row.names=F )
 
