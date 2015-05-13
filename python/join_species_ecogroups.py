@@ -15,11 +15,12 @@ i = "town"
 i = "watershed"
 j = "formation"
 j = "macrogroup_forest"
-
+j = "forest_type"
+#"formation","macrogroup_forest","forest_type"
 
 for i in ["town","watershed"]:
 	print i
-	for j in ["formation","macrogroup_forest"]:
+	for j in ["forest_type"]:
 		print j
 		arcpy.gp.Combine_sa( geodb1 + "/" + i + "_raster;" + geodb2 + "/" + j,
 		geodb3 + "/" + i + "_" + j )
