@@ -49,7 +49,9 @@ for i in dirs:
 	in_data=geodb + "/" + layer + "1",
 	data_type="RasterDataset")
 
-### prep GAP species layers
+	
+	
+### prep DSL species layers
 ##
 #
 

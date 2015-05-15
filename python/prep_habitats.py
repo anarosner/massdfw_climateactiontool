@@ -40,7 +40,7 @@ geodb + "/macrogroup")
 
 
 
-### prep forest layer 
+### prep macrogroup -level forest layer 
 ##
 #
 
@@ -57,32 +57,37 @@ out_path="C:/ALR/Projects/MassDFW/Data/tables/habitats",
 out_name="macrogroup_forest.dbf")
 
 
+### prep custom forest layer (regrouped habitat-level definitions) 
+##
+#
 
 # pull select habitats types for additional forest layer
 arcpy.gp.ExtractByAttributes_sa( geodb + "/habitat",
 "MACROGROUP = 'Boreal Upland Forest' OR MACROGROUP = 'Central Hardwood Swamp' OR MACROGROUP = 'Central Oak-Pine'  OR MACROGROUP = 'Coastal Plain Peat Swamp' OR MACROGROUP = 'Coastal Plain Peatland' OR MACROGROUP = 'Coastal Plain Swamp' OR MACROGROUP = 'Glade, Barren and Savanna' OR MACROGROUP = 'Large River Floodplain' OR MACROGROUP = 'Northern Hardwood & Conifer' OR MACROGROUP = 'Northern Peatland' OR MACROGROUP = 'Northern Swamp' OR MACROGROUP = 'Wet Meadow / Shrub Marsh'",
 geodb + "/habitat_forest")
 
+#add field for custom forest type
 arcpy.AddField_management( in_table = geodb + "/habitat_forest" ,
 field_name="forest_type",
 field_type="text",
 field_length=255,
 field_is_nullable="NULLABLE",field_is_required="NON_REQUIRED",field_domain="#" )
 
-
-#
+#pull raster into local memory
 arcpy.MakeRasterLayer_management( in_raster=geodb + "/habitat_forest",
 out_rasterlayer="temp_hab_forest")
 
+#set all rows to non-forest initially
 arcpy.CalculateField_management(in_table="temp_hab_forest",
 field="forest_type",
 expression="'Non-forest'",expression_type="PYTHON")
 
 
 
-
-
-
+#
+# loop through custom forest types to save
+# select by sql query, and set forest_type name
+#
 
 #Northern hardwood
 arcpy.SelectLayerByAttribute_management(in_layer_or_view="temp_hab_forest",
@@ -138,13 +143,16 @@ arcpy.CalculateField_management(in_table="temp_hab_forest",
 field="forest_type",
 expression="'Other forest'",expression_type="PYTHON")
 
+#
+# create new raster and table of custom forest types
+#
 
-#resave forest only 
+#resave raster without the "non forest" rows  
 arcpy.gp.ExtractByAttributes_sa( geodb + "/habitat_forest",
 "forest_type <> 'Non-forest' ",
 geodb + "/forest_type1")
 
-# reclassify to forest group
+# reclassify values by forest group
 arcpy.gp.Lookup_sa(geodb + "/forest_type1",
 "forest_type",
 geodb + "/forest_type")
@@ -154,8 +162,13 @@ arcpy.TableToTable_conversion(in_rows=geodb + "/forest_type",
 out_path="C:/ALR/Projects/MassDFW/Data/tables/habitats",
 out_name="forest_type.dbf")
 
-x	
 
+### notes on definition for forest types
+##
+#
+
+x	
+#
 
 	# Northern hardwood (NH)
 	Laurentian-Acadian Northern Hardwood Forest
@@ -194,37 +207,7 @@ x
 	Glacial Marine & Lake Mesic Clayplain Forest
 	
 
-##############
-# to do
 
-# open space
-	# filter by prim_purp cons, cons and rec, habitat
-	# lowercase site name
-	# find rows w blank site name, paste site owner
-	# dissolve by site name
-	# create unique id of first polygon id with park_ prefix
-
-
-	
-
-##############
-# done
-
-# towns poly
-	# create unique idea w/ town_ prefix
-	# poly to raster
-# NE Terrestrial Hab
-	# extract by mask (clip) to MA
-	# Table to table habitat
-	# Lookup formations
-	# Table to table formations
-	# Lookup macrogroup
-	# Table to table macrogroup
-# combine
-	# Combine towns formations
-	# Table to table towns formations combine
-# species
-	# extract by mask to MA
 	
 
 
